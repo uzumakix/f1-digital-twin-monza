@@ -1,0 +1,24 @@
+session:
+  year: 2023
+  circuit: Spa
+  type: Q
+
+drivers:
+  reference: VER
+  comparison: LEC
+
+grid:
+  step_metres: 1
+
+output:
+  filename: telemetry_spa.png
+  dpi: 200
+
+corners:
+  - ["Eau Rouge", 750]
+  - ["Raidillon", 900]
+  - ["Les Combes", 1750]
+  - ["Pouhon", 3400]
+  - ["Stavelot", 4200]
+  - ["Blanchimont", 5200]
+  - ["Bus Stop", 6150]

@@ -1,0 +1,27 @@
+session:
+  year: 2023
+  circuit: Monza
+  type: Q
+
+drivers:
+  reference: VER
+  comparison: SAI
+
+grid:
+  step_metres: 1
+
+output:
+  filename: telemetry_analysis.png
+  dpi: 200
+
+corners:
+  - ["T1 Grande", 295]
+  - ["T2 Grande", 370]
+  - ["Roggia", 680]
+  - ["Roggia", 750]
+  - ["Lesmo 1", 1430]
+  - ["Lesmo 2", 1650]
+  - ["Ascari", 3450]
+  - ["Ascari", 3560]
+  - ["Ascari", 3640]
+  - ["Parabolica", 4400]
