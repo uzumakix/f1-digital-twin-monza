@@ -9,9 +9,7 @@ Spatial telemetry reconstruction for the 2023 Italian GP Qualifying. Converts ra
 
 Built for VER vs SAI. Configurable for any driver pairing or session via YAML.
 
-<p align="center">
-  <img src="telemetry_analysis.png" alt="Differential Telemetry Analysis" width="100%">
-</p>
+
 
 ## Why this exists
 
@@ -128,3 +126,4 @@ Resolution caps at ~240 Hz (FastF1 interpolation). No tyre compound correction. 
 ## License
 
 [MIT](LICENSE)
+
