@@ -1,65 +1,64 @@
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)]()
-[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-purple.svg)](https://github.com/astral-sh/ruff)
-
 # f1-digital-twin-monza
 
-Spatial telemetry reconstruction for the 2023 Italian GP Qualifying. Converts raw time-series sensor data into a distance-domain performance map that shows where each driver gains or loses, metre by metre.
+Spatial telemetry reconstruction for F1 qualifying. Converts time-series sensor data into a distance-domain delta map that shows where each driver gains or loses, metre by metre.
 
-Built for VER vs SAI. Configurable for any driver pairing or session via YAML.
+![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776ab?style=flat-square&logo=python&logoColor=white)
+![License MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+![CI](https://img.shields.io/github/actions/workflow/status/uzumakix/f1-digital-twin-monza/ci.yml?style=flat-square&label=tests)
 
+## example output
 
+VER vs SAI, 2023 Monza Qualifying:
 
-## Why this exists
+![telemetry chart](results/telemetry_analysis.png)
 
-A lap time is one number. It collapses 4.7 km of complex spatial performance into a single figure and hides everything interesting.
+Top panel: speed traces for both drivers. Bottom panel: cumulative time delta. Blue fill = VER ahead, green fill = SAI ahead. The delta oscillates because the two cars have different strengths at different parts of the track.
 
-This tool reverses that collapse. It reconstructs where the time lives on track, exposing the mechanical and human story underneath the headline gap. For 2023 Monza, it reveals Ferrari's braking zone advantage and Red Bull's cornering efficiency nearly cancelling each other. The 0.066s gap is the residual of much larger gains in opposite directions.
+![delta detail](results/delta_detail.png)
 
-Full race analysis with driver technique breakdown: [docs/analysis.md](docs/analysis.md)
+Corner annotations show where each driver gains. SAI recovers time in the chicane braking zones (Roggia, Ascari). VER builds his gap through the Lesmo complex where the RB19's downforce pays off at high cornering speeds.
 
-## How it works
+Full analysis with driver technique breakdown: [docs/analysis.md](docs/analysis.md)
+
+## how it works
 
 ```
-Raw telemetry (time-indexed)  -->  Spatial resampling (1m grid)  -->  Delta computation  -->  Chart
+raw telemetry (time-indexed)
+    --> piecewise-linear interpolation
+    --> resample onto shared 1m distance grid
+    --> compute dt(d) = t_A(d) - t_B(d) at every metre
+    --> render chart with corner markers
 ```
 
-1. Load qualifying session via FastF1 (cached locally after first run)
+1. Load session via FastF1 (caches locally after first download)
 2. Extract fastest lap telemetry for both drivers
-3. Build piecewise-linear interpolators: distance to elapsed time and speed
-4. Evaluate both on a shared 1-metre grid
-5. Compute `dt(d) = t_A(d) - t_B(d)` at every grid point
-6. Render two-panel chart with corner annotations
+3. Build interpolators: distance to elapsed time and speed
+4. Evaluate on a common 1-metre grid
+5. Plot speed traces and cumulative delta
 
-Negative delta = driver A ahead. Positive = driver B ahead. Final value converges to the official gap.
+Negative delta = driver A ahead. Final value converges to the official qualifying gap.
 
-## Quick start
+## usage
 
 ```bash
-git clone https://github.com/<your-username>/f1-digital-twin-monza.git
+git clone https://github.com/uzumakix/f1-digital-twin-monza.git
 cd f1-digital-twin-monza
-
-python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
 python main.py
 ```
 
-First run downloads ~50-80 MB of session data. Cached runs take 3-5 seconds.
-
-## Usage
+First run downloads ~50-80 MB of session data from FIA. Cached runs take 3-5 seconds.
 
 ```bash
-python main.py                              # Default: VER vs SAI, Monza 2023 Q
-python main.py --config configs/spa.yaml    # Different session
-python main.py --export csv                 # Export resampled data
-python main.py --export both --no-chart     # Data only, skip chart
+python main.py                                 # default: VER vs SAI, Monza 2023 Q
+python main.py --config configs/spa_2023.yaml  # different session
+python main.py --export csv                    # export resampled data
+python main.py --export both --no-chart        # data only
 ```
 
-## Configuration
+## configuration
 
-Session parameters live in YAML. No code changes needed.
+Session parameters live in YAML files. No code changes needed to switch drivers or circuits.
 
 ```yaml
 # configs/monza_2023.yaml
@@ -84,46 +83,41 @@ corners:
   - ["Parabolica", 4400]
 ```
 
-## Project structure
+## project structure
 
 ```
 src/
-    config.py       Typed configuration with dataclass validation
-    ingest.py       Session loading and lap extraction
-    resample.py     Time-to-distance domain transformation
-    visualise.py    Chart rendering with configurable theme and corners
+    ingest.py       session loading via FastF1
+    resample.py     time-to-distance domain transform (scipy interp1d)
+    visualise.py    two-panel chart renderer
+    config.py       typed dataclass config + YAML loader
     export.py       CSV and JSON data export
-configs/            YAML session definitions and corner maps
-tests/              Unit tests with synthetic telemetry fixtures
-docs/               Race analysis and methodology
+configs/            YAML session definitions
+tests/              unit tests with synthetic telemetry fixtures
+docs/               race analysis writeups
 ```
 
-## Development
+## tests
 
 ```bash
-make test       # pytest suite
-make lint       # ruff check + format
-make run        # Run analysis
-make export     # CSV + JSON output
-make clean      # Remove cache and outputs
+pip install pytest
+python -m pytest tests/ -v
 ```
 
-## Tech stack
+Tests use synthetic telemetry (no network needed). Covers interpolator correctness, grid bounds, delta sign, array alignment, export formats, and config loading.
 
-| Library | Role |
-|---|---|
-| **fastf1** | Telemetry ingestion via FIA live timing |
-| **scipy** | Piecewise linear interpolation for domain resampling |
-| **numpy** | Vectorised grid construction and delta arithmetic |
-| **pandas** | Dataframe manipulation and timedelta handling |
-| **matplotlib** | Dark-mode publication-quality charts |
-| **pyyaml** | Configuration management |
+## limitations
 
-## Limitations
+- Resolution caps at ~240 Hz (FastF1 interpolation limit)
+- No tyre compound correction
+- Track evolution across the session is not modelled
+- Corner positions are approximate (manually measured from track maps)
+- Fuel load differences between laps are ignored
 
-Resolution caps at ~240 Hz (FastF1 interpolation). No tyre compound correction. Track evolution across the session is not modelled. Corner positions are approximate.
+## tech
 
-## License
+FastF1 for telemetry ingestion, scipy for piecewise linear interpolation, numpy for grid construction, pandas for timedelta handling, matplotlib for charting.
+
+## license
 
 [MIT](LICENSE)
-

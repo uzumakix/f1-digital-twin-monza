@@ -6,8 +6,9 @@ __pycache__/
 
 # Output
 output/
-telemetry_analysis.png
-telemetry_*.png
+/telemetry_analysis.png
+/telemetry_*.png
+!results/
 
 # Virtual environment
 .venv/
