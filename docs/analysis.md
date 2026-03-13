@@ -1,21 +1,21 @@
-# 2023 Monza Q: VER vs SAI
+# 2023 Monza Qualifying: VER vs SAI
 
-Gap: 0.034s (real data via FastF1)
+Pole: SAI (1:20.294) over VER (1:20.307). Gap: 0.013s. Both on soft compound.
 
 ## where SAI gains
 
-The chicanes. Roggia and Ascari are where the SF-23's mechanical grip shows up. Sainz brakes later and rotates the car faster through the slow-speed sequences. The delta swings green (SAI advantage) at every chicane entry.
+Braking zones. The telemetry shows SAI braking later into T1 Grande, Roggia, and Ascari. The brake trace shifts right by about 10 metres compared to VER at 340 km/h approach speeds. The SF-23's mechanical grip lets Sainz commit to later braking points and still rotate the car through the chicanes.
 
-Parabolica entry too, around 4350m. Similar story, late braking into a long-radius corner.
+The track delta map shows these zones clearly: the circuit goes red at every chicane entry.
 
 ## where VER gains
 
-The Lesmo complex, 1400-1700m. These are medium-fast corners where downforce matters. The RB19 carries more speed through the apex because it generates more load at that speed range. The gap goes blue (VER advantage) steadily through both Lesmos.
+Medium-speed corners. The Lesmos (turns 6-7, around 2100-2500m on track) are where the RB19's aero advantage shows up most. VER carries 3-5 km/h more through the apex because the car makes more downforce at those speeds. The driver inputs chart shows this in the speed trace.
 
-The straights compound this. Lower drag means 2-4 km/h more top speed, repeated three times per lap.
+VER also gains 2-3 km/h on the straights from lower drag, but this accumulates slowly.
 
-## the net picture
+## why the gap is so small
 
-These swings nearly cancel. The qualifying gap is whatever's left over after both cars spend their advantages in different places.
+Both advantages are real and both are significant. SAI gains about 0.05-0.08s total in braking zones across the lap. VER gains a similar amount through fast corners and straights. The 0.013s pole gap is what's left after these larger effects cancel.
 
-This is the point of the tool. A single lap time (1:20.307 vs 1:20.294) tells you nothing about why the gap exists. The spatial breakdown shows the mechanical and human story underneath.
+This is what makes the tool useful. The lap time (1:20.307 vs 1:20.294) says almost nothing. The spatial breakdown shows the actual mechanical and driving differences that produce it.

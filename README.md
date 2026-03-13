@@ -1,48 +1,54 @@
 # f1-digital-twin-monza
 
-Spatial telemetry pipeline for F1 qualifying sessions. Resamples time-domain sensor data onto a 1-metre distance grid and computes the performance delta between two drivers across the full circuit.
+SAI beat VER to pole at Monza 2023 by 0.013s. Both on softs, same conditions. I wanted to know where that gap actually came from, so I built a tool to find out.
 
-Default: **VER vs SAI, 2023 Italian GP Qualifying** (both on Soft compound).
+It takes FIA telemetry and resamples it onto a 1-metre distance grid so you can compare two laps point by point across the whole circuit.
 
-## track delta map
+## where the time lives
 
-![track delta](results/track_delta_map.png)
+![track delta](results/track_delta.png)
 
-Blue = VER faster. Red = SAI faster. The Lesmo complex (top right) is solidly blue. The chicanes are red.
+This is the circuit layout colored by who's ahead at each point. Blue sections are where VER is faster, red is SAI. Corner numbers from the FIA circuit map.
 
-## speed map
+The pattern is clear: SAI's advantage is concentrated in the braking zones (turns 1-2, the Roggia chicane, Ascari). VER gains through the faster corners (Lesmos, turn 6-7) where the RB19 generates more downforce at speed.
 
-![track speed](results/track_speed_map.png)
+These gains mostly cancel out. The 0.013s pole gap is the leftover from much bigger swings in each direction.
 
-Same circuit, colored by speed. Both cars hit 343 km/h on the main straight. The chicanes drop below 80. You can see where Monza's character comes from: it's three long full-throttle zones connected by slow chicanes.
+## speed on track
 
-## telemetry overlay
+![speed comparison](results/speed_comparison.png)
 
-![telemetry](results/telemetry_analysis.png)
+Both cars colored by speed (purple = slow, yellow = fast). Top speed around 343 km/h on the main straight, dropping below 80 km/h in the chicanes. You can see why Monza is called the Temple of Speed: three long full-throttle blasts connected by tight chicane braking zones.
 
-Speed traces (top) and cumulative time delta (bottom). The delta swings back and forth as each car spends its advantages in different sectors.
+Colors: official 2023 Red Bull and Ferrari team colors via FastF1.
 
 ## driver inputs
 
-![inputs](results/driver_inputs.png)
+![driver inputs](results/driver_inputs.png)
 
-Speed, throttle, brake, gear for both drivers across the lap. Look at the braking zones into T1 Grande and Roggia: SAI brakes later (the red trace shifts right). Through the Lesmos, VER carries 3-5 km/h more minimum speed.
+This is what I find most interesting. Speed, throttle, brake, and gear for both drivers overlaid across the whole lap.
 
-## delta trace
+The throttle traces are nearly identical on the straights (both flat out). The differences show up in the transitions. Into T1 Grande, SAI's brake trace starts ~10m later. Through the Lesmos (around 2100-2500m), VER's minimum speed is 3-5 km/h higher because he can lean on the car's downforce through mid-speed corners.
 
-![delta](results/delta_detail.png)
+## telemetry + delta
 
-Final gap: **0.019s**. Pole: SAI. VER was 1:20.307, SAI was 1:20.294.
+![telemetry](results/telemetry_analysis.png)
+
+Top: speed traces. Bottom: cumulative time delta. Negative = VER ahead, positive = SAI ahead. The delta swings back and forth until settling at +0.019s (SAI) by the end.
+
+Full race analysis: [docs/analysis.md](docs/analysis.md)
 
 ---
 
 ## how it works
 
-Raw telemetry from FastF1 is time-indexed. To compare two laps you need them in the same domain, so the pipeline resamples both onto a shared distance grid using piecewise-linear interpolation (scipy `interp1d`). Then `delta(d) = t_VER(d) - t_SAI(d)` at every metre.
+Telemetry from FIA is time-indexed. But comparing two laps in the time domain doesn't make sense because the drivers are at different positions at the same timestamp. So you convert both to the distance domain:
 
-```
-time-series telemetry -> interpolate to distance domain -> 1m grid -> delta computation -> charts
-```
+1. Build piecewise-linear interpolators (distance -> elapsed time, distance -> speed) for each driver
+2. Evaluate both on a shared 1-metre grid
+3. `delta(d) = t_VER(d) - t_SAI(d)` at every grid point
+
+That gives you the gap at every metre of the circuit.
 
 ## setup
 
@@ -53,41 +59,32 @@ pip install -r requirements.txt
 python main.py
 ```
 
-First run downloads ~50 MB from FIA. Cached after that.
+First run downloads ~50 MB from FIA (cached after that). Switch drivers or circuits by editing the YAML config:
 
 ```bash
-python main.py --config configs/spa_2023.yaml   # different track
-python main.py --export csv                      # dump resampled data
+python main.py --config configs/spa_2023.yaml
+python main.py --export csv
 ```
-
-Switch drivers or circuits by editing the YAML config.
 
 ## structure
 
 ```
 src/
-    ingest.py       session + lap extraction (FastF1)
+    ingest.py       load session + extract laps (FastF1)
     resample.py     time-to-distance resampling (scipy interp1d)
     visualise.py    chart rendering
-    config.py       YAML config loader
+    config.py       YAML config with dataclass validation
     export.py       CSV/JSON export
-tests/              25 tests, synthetic fixtures, runs offline
-configs/            session definitions (Monza, Spa)
-docs/               race analysis
-```
-
-## tests
-
-```bash
-python -m pytest tests/ -v    # 25 passed
+tests/              25 tests, synthetic fixtures, no network needed
+configs/            Monza, Spa session configs
 ```
 
 ## limitations
 
-- ~240 Hz resolution (FastF1 interpolation limit)
-- No tyre compound normalization
-- No fuel correction
-- Corner positions hand-measured
-- Track evolution not modelled
+- ~240 Hz resolution ceiling from FastF1 interpolation
+- No tyre degradation or compound normalization
+- No fuel load correction between runs
+- Corner positions from FIA circuit data (approximate)
+- Track evolution across the session not modelled
 
 [MIT](LICENSE)
