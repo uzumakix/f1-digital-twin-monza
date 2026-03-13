@@ -1,28 +1,48 @@
 # f1-digital-twin-monza
 
-Lap time is one number. It hides everything. This tool breaks it open.
+Spatial telemetry pipeline for F1 qualifying sessions. Resamples time-domain sensor data onto a 1-metre distance grid and computes the performance delta between two drivers across the full circuit.
 
-Takes raw F1 telemetry and rebuilds the spatial performance gap between two drivers, metre by metre, across the full track. You get to see exactly where each driver gains and loses, and by how much.
+Default: **VER vs SAI, 2023 Italian GP Qualifying** (both on Soft compound).
 
-Built on [FastF1](https://github.com/theOehrly/Fast-F1). Default config: VER vs SAI, 2023 Monza Qualifying.
+## track delta map
 
-![telemetry chart](results/telemetry_analysis.png)
+![track delta](results/track_delta_map.png)
 
-Top: speed traces. Bottom: cumulative time delta (blue = VER ahead, green = SAI ahead). Corner markers show where the track features are.
+Blue = VER faster. Red = SAI faster. The Lesmo complex (top right) is solidly blue. The chicanes are red.
 
-![delta detail](results/delta_detail.png)
+## speed map
 
-The delta oscillates because the cars trade advantages. SAI gains in chicane braking zones. VER gains through fast corners and on the straights. The final gap (0.034s) is the residual of much bigger swings in opposite directions.
+![track speed](results/track_speed_map.png)
 
-Detailed breakdown: [docs/analysis.md](docs/analysis.md)
+Same circuit, colored by speed. Both cars hit 343 km/h on the main straight. The chicanes drop below 80. You can see where Monza's character comes from: it's three long full-throttle zones connected by slow chicanes.
+
+## telemetry overlay
+
+![telemetry](results/telemetry_analysis.png)
+
+Speed traces (top) and cumulative time delta (bottom). The delta swings back and forth as each car spends its advantages in different sectors.
+
+## driver inputs
+
+![inputs](results/driver_inputs.png)
+
+Speed, throttle, brake, gear for both drivers across the lap. Look at the braking zones into T1 Grande and Roggia: SAI brakes later (the red trace shifts right). Through the Lesmos, VER carries 3-5 km/h more minimum speed.
+
+## delta trace
+
+![delta](results/delta_detail.png)
+
+Final gap: **0.019s**. Pole: SAI. VER was 1:20.307, SAI was 1:20.294.
+
+---
 
 ## how it works
 
-```
-telemetry (time-indexed) -> interpolate -> resample to 1m grid -> compute dt(d) -> plot
-```
+Raw telemetry from FastF1 is time-indexed. To compare two laps you need them in the same domain, so the pipeline resamples both onto a shared distance grid using piecewise-linear interpolation (scipy `interp1d`). Then `delta(d) = t_VER(d) - t_SAI(d)` at every metre.
 
-The key step is domain conversion. Raw telemetry is time-indexed (a sample every few milliseconds). But comparing two laps in the time domain doesn't work because the drivers are at different track positions at the same time. So you interpolate both signals into the distance domain and evaluate them on a shared 1-metre grid. Then `delta(d) = t_A(d) - t_B(d)` gives you the gap at every point on track.
+```
+time-series telemetry -> interpolate to distance domain -> 1m grid -> delta computation -> charts
+```
 
 ## setup
 
@@ -33,43 +53,41 @@ pip install -r requirements.txt
 python main.py
 ```
 
-First run downloads ~50 MB from FIA servers. After that it's cached.
+First run downloads ~50 MB from FIA. Cached after that.
 
 ```bash
 python main.py --config configs/spa_2023.yaml   # different track
-python main.py --export csv                      # dump the data
-python main.py --no-chart --export both          # data only
+python main.py --export csv                      # dump resampled data
 ```
 
-Sessions are configured in YAML. Switch drivers or circuits without touching code.
+Switch drivers or circuits by editing the YAML config.
 
 ## structure
 
 ```
 src/
-    ingest.py       load session + extract fastest laps (FastF1)
+    ingest.py       session + lap extraction (FastF1)
     resample.py     time-to-distance resampling (scipy interp1d)
-    visualise.py    chart renderer
+    visualise.py    chart rendering
     config.py       YAML config loader
     export.py       CSV/JSON export
-tests/              synthetic fixtures, no network needed
-configs/            session definitions
+tests/              25 tests, synthetic fixtures, runs offline
+configs/            session definitions (Monza, Spa)
+docs/               race analysis
 ```
 
 ## tests
 
 ```bash
-python -m pytest tests/ -v
+python -m pytest tests/ -v    # 25 passed
 ```
-
-25 tests. All use synthetic telemetry so they run offline. Covers interpolation, grid alignment, delta correctness, export formats.
 
 ## limitations
 
-- ~240 Hz resolution ceiling (FastF1 interpolation)
+- ~240 Hz resolution (FastF1 interpolation limit)
 - No tyre compound normalization
-- No fuel load correction
-- Corner positions hand-measured from track maps
+- No fuel correction
+- Corner positions hand-measured
 - Track evolution not modelled
 
-MIT
+[MIT](LICENSE)
