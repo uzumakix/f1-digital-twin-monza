@@ -171,7 +171,7 @@ def render_chart(
 
     # Watermark
     fig.text(
-        0.97, 0.01, "f1-digital-twin-monza | data: FastF1 + FIA",
+        0.97, 0.01, "kinematic trajectory comparison | data: FastF1 + FIA",
         color=theme.grid_color, fontsize=6.5, ha="right", fontfamily="monospace",
     )
 

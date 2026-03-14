@@ -1,6 +1,6 @@
 """
 f1-digital-twin-monza
-Entry point for the differential telemetry analysis pipeline.
+Entry point for the kinematic trajectory comparison pipeline.
 """
 
 import argparse
@@ -31,7 +31,7 @@ def _setup_logging(verbose: bool = False) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="f1-digital-twin",
-        description="Spatial telemetry reconstruction for F1 qualifying sessions.",
+        description="Kinematic trajectory comparison for F1 qualifying sessions.",
     )
     parser.add_argument(
         "--config", default="configs/monza_2023.yaml",
