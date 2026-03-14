@@ -1,35 +1,12 @@
-# Cache
-.f1_cache/
 __pycache__/
 *.pyc
-*.pyo
-
-# Output
-output/
-/telemetry_analysis.png
-/telemetry_*.png
-!results/
-
-# Virtual environment
-.venv/
-venv/
-
-# Build
+.f1_cache/
 *.egg-info/
 dist/
 build/
-
-# Tools
-.ruff_cache/
-.pytest_cache/
-.mypy_cache/
-htmlcov/
-.coverage
-
-# IDE
-.vscode/
+.venv/
+venv/
+.env
+*.log
 .idea/
-*.swp
-*.swo
-*~
-.DS_Store
+.vscode/
