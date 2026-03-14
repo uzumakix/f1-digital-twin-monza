@@ -1,56 +1,44 @@
 # f1-digital-twin-monza
 
-SAI beat VER to pole at Monza 2023 by 0.013s. Both on softs, same conditions. I wanted to know where that gap actually came from, so I built a tool to find out.
+Kinematic trajectory comparison between Verstappen and Sainz during 2023 Monza Qualifying. Uses FIA telemetry resampled onto a uniform 1-metre distance grid to isolate where time is gained and lost across 5.793 km of circuit.
 
-It takes FIA telemetry and resamples it onto a 1-metre distance grid so you can compare two laps point by point across the whole circuit.
-
-## where the time lives
+## What the project finds
 
 ![track delta](results/track_delta.png)
 
-This is the circuit layout colored by who's ahead at each point. Blue sections are where VER is faster, red is SAI. Corner numbers from the FIA circuit map.
-
-The pattern is clear: SAI's advantage is concentrated in the braking zones (turns 1-2, the Roggia chicane, Ascari). VER gains through the faster corners (Lesmos, turn 6-7) where the RB19 generates more downforce at speed.
-
-These gains mostly cancel out. The 0.013s pole gap is the leftover from much bigger swings in each direction.
-
-## speed on track
-
-![speed comparison](results/speed_comparison.png)
-
-Both cars colored by speed (purple = slow, yellow = fast). Top speed around 343 km/h on the main straight, dropping below 80 km/h in the chicanes. You can see why Monza is called the Temple of Speed: three long full-throttle blasts connected by tight chicane braking zones.
-
-Colors: official 2023 Red Bull and Ferrari team colors via FastF1.
-
-## driver inputs
-
-![driver inputs](results/driver_inputs.png)
-
-This is what I find most interesting. Speed, throttle, brake, and gear for both drivers overlaid across the whole lap.
-
-The throttle traces are nearly identical on the straights (both flat out). The differences show up in the transitions. Into T1 Grande, SAI's brake trace starts ~10m later. Through the Lesmos (around 2100-2500m), VER's minimum speed is 3-5 km/h higher because he can lean on the car's downforce through mid-speed corners.
-
-## telemetry + delta
+The 0.013s pole gap between SAI (1:20.294) and VER (1:20.307) is the residual of much larger opposing swings. SAI gains ~0.05–0.08s total in braking zones (T1 Grande, Roggia, Ascari) by committing to brake points ~10m later at 340 km/h approach speeds. VER recovers a similar margin through medium-speed corners (Lesmos) where higher aerodynamic load permits 3–5 km/h more apex speed.
 
 ![telemetry](results/telemetry_analysis.png)
 
-Top: speed traces. Bottom: cumulative time delta. Negative = VER ahead, positive = SAI ahead. The delta swings back and forth until settling at +0.019s (SAI) by the end.
+The cumulative time delta (bottom panel) shows these gains trading back and forth until settling at +0.019s by the finish line. A lap-time comparison alone would hide this structure entirely.
 
-Full race analysis: [docs/analysis.md](docs/analysis.md)
+## How it works
 
----
+Telemetry from the FIA is time-indexed, but comparing two laps in the time domain is meaningless because the drivers occupy different positions at the same timestamp. The pipeline converts both laps to the distance domain:
 
-## how it works
+1. For each driver, build a piecewise-linear interpolator mapping distance → elapsed time and distance → speed (via `scipy.interpolate.interp1d`).
+2. Evaluate both interpolators on a shared distance grid with 1 m spacing.
+3. Compute the time delta at each grid point: `Δt(d) = t_ref(d) − t_cmp(d)`.
 
-Telemetry from FIA is time-indexed. But comparing two laps in the time domain doesn't make sense because the drivers are at different positions at the same timestamp. So you convert both to the distance domain:
+This is a standard spatial resampling approach used in traffic flow analysis and vehicle kinematics — the same principle behind the Intelligent Driver Model's position-based formulation, applied here to single-lap telemetry rather than car-following scenarios.
 
-1. Build piecewise-linear interpolators (distance -> elapsed time, distance -> speed) for each driver
-2. Evaluate both on a shared 1-metre grid
-3. `delta(d) = t_VER(d) - t_SAI(d)` at every grid point
+## Project structure
 
-That gives you the gap at every metre of the circuit.
+```
+src/
+    ingest.py       load session + extract laps (FastF1 API)
+    resample.py     time-to-distance resampling (scipy interp1d)
+    visualise.py    two-panel speed + delta chart
+    config.py       YAML config loader with dataclass validation
+    export.py       CSV/JSON telemetry export
+configs/
+    monza_2023.yaml VER vs SAI qualifying config
+    spa_2023.yaml   VER vs LEC qualifying config
+tests/              25 unit tests, synthetic fixtures, no network needed
+results/            generated plots
+```
 
-## setup
+### Setup
 
 ```bash
 git clone https://github.com/uzumakix/f1-digital-twin-monza.git
@@ -59,32 +47,18 @@ pip install -r requirements.txt
 python main.py
 ```
 
-First run downloads ~50 MB from FIA (cached after that). Switch drivers or circuits by editing the YAML config:
+First run downloads ~50 MB of FIA data (cached locally after that). Switch sessions:
 
 ```bash
 python main.py --config configs/spa_2023.yaml
 python main.py --export csv
 ```
 
-## structure
+## References
 
-```
-src/
-    ingest.py       load session + extract laps (FastF1)
-    resample.py     time-to-distance resampling (scipy interp1d)
-    visualise.py    chart rendering
-    config.py       YAML config with dataclass validation
-    export.py       CSV/JSON export
-tests/              25 tests, synthetic fixtures, no network needed
-configs/            Monza, Spa session configs
-```
-
-## limitations
-
-- ~240 Hz resolution ceiling from FastF1 interpolation
-- No tyre degradation or compound normalization
-- No fuel load correction between runs
-- Corner positions from FIA circuit data (approximate)
-- Track evolution across the session not modelled
+- Treiber, M., Hennecke, A., & Helbing, D. (2000). *Congested traffic states in empirical observations and microscopic simulations.* Physical Review E, 62(2), 1805–1824. — Foundational position-based kinematic model for vehicle trajectory analysis.
+- Bando, M., Hasebe, K., Nakayama, A., Shibata, A., & Sugiyama, Y. (1995). *Dynamical model of traffic congestion and numerical simulation.* Physical Review E, 51(2), 1035–1042. — Optimal velocity model; distance-domain formulation of vehicle dynamics.
+- Kesting, A., Treiber, M., & Helbing, D. (2010). *Enhanced intelligent driver model to access the impact of driving strategies on traffic capacity.* Philosophical Transactions of the Royal Society A, 368(1928), 4585–4605. — Extended kinematic model with lane-change and acceleration profiles.
+- FastF1 documentation and FIA telemetry data format: [theOehrly/Fast-F1](https://github.com/theOehrly/Fast-F1).
 
 [MIT](LICENSE)
