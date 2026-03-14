@@ -41,11 +41,11 @@ def save_braking_chart(data, out="results/braking_analysis.png"):
 
     if bp_a is not None:
         ax1.axvline(bp_a, color=ca, linestyle="--", linewidth=1, alpha=0.6)
-        ax1.text(bp_a + 5, 120, f"{da} brake\n{bp_a:.0f}m",
-                 fontsize=7, color=ca, fontfamily="monospace")
+        ax1.text(bp_a - 30, 130, f"{da} brake\n{bp_a:.0f}m",
+                 fontsize=7, color=ca, fontfamily="monospace", ha="right")
     if bp_b is not None:
         ax1.axvline(bp_b, color=cb, linestyle="--", linewidth=1, alpha=0.6)
-        ax1.text(bp_b + 5, 150, f"{db} brake\n{bp_b:.0f}m",
+        ax1.text(bp_b + 5, 160, f"{db} brake\n{bp_b:.0f}m",
                  fontsize=7, color=cb, fontfamily="monospace")
 
     ax1.set_ylabel("Speed [km/h]", fontsize=10, color=text_c)
@@ -120,10 +120,11 @@ def save_full_lap_speed(data, out="results/full_lap_speed.png"):
     ax.plot(tel_b["Distance"], tel_b["Speed"], color=cb,
             linewidth=1.0, label=db, alpha=0.8)
 
-    # highlight T1 zone
-    ax.axvspan(250, 750, alpha=0.08, color="#ffffff", label="T1 zone")
-    ax.text(500, 355, "T1", ha="center", fontsize=9, color=muted,
-            fontfamily="monospace")
+    # highlight T1 braking zone (600m to 1050m from start line)
+    from pipeline import T1_ENTRY, T1_EXIT
+    ax.axvspan(T1_ENTRY, T1_EXIT, alpha=0.08, color="#ffffff", label="T1 zone")
+    ax.text((T1_ENTRY + T1_EXIT) / 2, 355, "T1", ha="center", fontsize=9,
+            color=muted, fontfamily="monospace")
 
     ax.set_ylabel("Speed [km/h]", fontsize=10, color=text_c)
     ax.set_xlabel("Distance [m]", fontsize=10, color=text_c)

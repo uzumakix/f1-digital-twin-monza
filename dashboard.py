@@ -1,82 +1,35 @@
 """
 dashboard.py
 Streamlit app for Monza T1 braking deceleration analysis.
-Fetches 2023 Monza Q telemetry via FastF1, computes longitudinal
-deceleration (a = dv/dt), and displays a dual-axis chart comparing
-VER vs SAI through the Turn 1 braking zone.
+Pulls real 2023 Monza Q telemetry via pipeline.py, displays a
+dual-axis chart of speed and longitudinal deceleration (a = dv/dt)
+through the Turn 1 braking zone.
 """
 
 import streamlit as st
-import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy.ndimage import uniform_filter1d
-import fastf1
-import fastf1.plotting as fp
+from pipeline import run_pipeline
 
 st.set_page_config(page_title="Monza T1 Braking", layout="wide")
 
-T1_ENTRY = 600
-T1_EXIT = 1050
-
 
 @st.cache_data(ttl=3600)
-def load_telemetry():
-    """Fetch real qualifying telemetry and compute deceleration."""
-    session = fastf1.get_session(2023, "Monza", "Q")
-    session.load()
-
-    ver_lap = session.laps.pick_drivers("VER").pick_fastest()
-    sai_lap = session.laps.pick_drivers("SAI").pick_fastest()
-
-    ver_tel = ver_lap.get_car_data().add_distance()
-    sai_tel = sai_lap.get_car_data().add_distance()
-
-    ver_color = fp.get_team_color(ver_lap["Team"], session=session)
-    sai_color = fp.get_team_color(sai_lap["Team"], session=session)
-
-    def add_decel(df):
-        d = df.copy()
-        d["ElapsedSec"] = d["SessionTime"].dt.total_seconds()
-        d["Speed_ms"] = d["Speed"] * (1000.0 / 3600.0)
-        dt = np.gradient(d["ElapsedSec"].values)
-        dv = np.gradient(d["Speed_ms"].values)
-        dt[dt == 0] = np.nan
-        raw_accel = dv / dt
-        d["Accel_G"] = raw_accel / 9.81
-        d["Accel_G"] = d["Accel_G"].interpolate(method="nearest").bfill().ffill()
-        return d
-
-    ver_tel = add_decel(ver_tel)
-    sai_tel = add_decel(sai_tel)
-
-    def zone(df):
-        return df[(df["Distance"] >= T1_ENTRY) & (df["Distance"] <= T1_EXIT)].copy()
-
-    ver_z = zone(ver_tel)
-    sai_z = zone(sai_tel)
-
-    def brake_pt(df, threshold=-0.5):
-        heavy = df[df["Accel_G"] < threshold]
-        if len(heavy) == 0:
-            return None
-        return float(heavy["Distance"].iloc[0])
-
-    return {
-        "ver_z": ver_z,
-        "sai_z": sai_z,
-        "ver_color": ver_color,
-        "sai_color": sai_color,
-        "ver_bp": brake_pt(ver_z),
-        "sai_bp": brake_pt(sai_z),
-        "ver_peak": float(ver_z["Accel_G"].min()),
-        "sai_peak": float(sai_z["Accel_G"].min()),
-    }
+def get_data():
+    return run_pipeline()
 
 
-def make_chart(d):
+def make_chart(data):
     """Dual-axis chart: Speed + Deceleration through T1."""
+    zone_a = data["zone_a"]
+    zone_b = data["zone_b"]
+    da, db = data["driver_a"], data["driver_b"]
+    ca, cb = data["color_a"], data["color_b"]
+    bp_a, bp_b = data["brake_point_a"], data["brake_point_b"]
+    peak_a, peak_b = data["peak_decel_a"], data["peak_decel_b"]
+
     bg = "#0e1117"
     panel = "#1a1a2e"
     grid_c = "#2a2a4a"
@@ -90,19 +43,19 @@ def make_chart(d):
 
     # speed panel
     ax_spd.set_facecolor(panel)
-    ax_spd.plot(d["ver_z"]["Distance"], d["ver_z"]["Speed"],
-                color=d["ver_color"], lw=1.8, label="VER", alpha=0.95)
-    ax_spd.plot(d["sai_z"]["Distance"], d["sai_z"]["Speed"],
-                color=d["sai_color"], lw=1.8, label="SAI", alpha=0.85)
+    ax_spd.plot(zone_a["Distance"], zone_a["Speed"],
+                color=ca, lw=1.8, label=da, alpha=0.95)
+    ax_spd.plot(zone_b["Distance"], zone_b["Speed"],
+                color=cb, lw=1.8, label=db, alpha=0.85)
 
-    if d["ver_bp"]:
-        ax_spd.axvline(d["ver_bp"], color=d["ver_color"], ls="--", lw=1, alpha=0.6)
-        ax_spd.text(d["ver_bp"] + 5, 120, f"VER brake\n{d['ver_bp']:.0f}m",
-                    fontsize=7, color=d["ver_color"], fontfamily="monospace")
-    if d["sai_bp"]:
-        ax_spd.axvline(d["sai_bp"], color=d["sai_color"], ls="--", lw=1, alpha=0.6)
-        ax_spd.text(d["sai_bp"] + 5, 150, f"SAI brake\n{d['sai_bp']:.0f}m",
-                    fontsize=7, color=d["sai_color"], fontfamily="monospace")
+    if bp_a is not None:
+        ax_spd.axvline(bp_a, color=ca, ls="--", lw=1, alpha=0.6)
+        ax_spd.text(bp_a - 30, 130, f"{da} brake\n{bp_a:.0f}m",
+                    fontsize=7, color=ca, fontfamily="monospace", ha="right")
+    if bp_b is not None:
+        ax_spd.axvline(bp_b, color=cb, ls="--", lw=1, alpha=0.6)
+        ax_spd.text(bp_b + 5, 160, f"{db} brake\n{bp_b:.0f}m",
+                    fontsize=7, color=cb, fontfamily="monospace")
 
     ax_spd.set_ylabel("Speed [km/h]", fontsize=10, color=txt)
     ax_spd.tick_params(colors=muted, labelsize=8)
@@ -113,22 +66,23 @@ def make_chart(d):
 
     # deceleration panel
     ax_dec.set_facecolor(panel)
-    sm_v = uniform_filter1d(d["ver_z"]["Accel_G"].values, size=5)
-    sm_s = uniform_filter1d(d["sai_z"]["Accel_G"].values, size=5)
+    smooth_a = uniform_filter1d(zone_a["Accel_G"].values, size=5)
+    smooth_b = uniform_filter1d(zone_b["Accel_G"].values, size=5)
 
-    ax_dec.plot(d["ver_z"]["Distance"].values, sm_v, color=d["ver_color"],
-                lw=1.8, label="VER decel", alpha=0.95)
-    ax_dec.plot(d["sai_z"]["Distance"].values, sm_s, color=d["sai_color"],
-                lw=1.8, label="SAI decel", alpha=0.85)
+    ax_dec.plot(zone_a["Distance"].values, smooth_a, color=ca,
+                lw=1.8, label=f"{da} decel", alpha=0.95)
+    ax_dec.plot(zone_b["Distance"].values, smooth_b, color=cb,
+                lw=1.8, label=f"{db} decel", alpha=0.85)
     ax_dec.axhline(0, color=muted, lw=0.6)
-    ax_dec.fill_between(d["ver_z"]["Distance"].values, 0, sm_v,
-                        where=(sm_v < 0), alpha=0.15, color=d["ver_color"])
-    ax_dec.fill_between(d["sai_z"]["Distance"].values, 0, sm_s,
-                        where=(sm_s < 0), alpha=0.12, color=d["sai_color"])
+    ax_dec.fill_between(zone_a["Distance"].values, 0, smooth_a,
+                        where=(smooth_a < 0), alpha=0.15, color=ca)
+    ax_dec.fill_between(zone_b["Distance"].values, 0, smooth_b,
+                        where=(smooth_b < 0), alpha=0.12, color=cb)
 
     ax_dec.text(0.02, 0.06,
-                f"Peak: VER {d['ver_peak']:.2f}G  |  SAI {d['sai_peak']:.2f}G",
-                transform=ax_dec.transAxes, fontsize=8, color=txt, fontfamily="monospace",
+                f"Peak: {da} {peak_a:.2f}G  |  {db} {peak_b:.2f}G",
+                transform=ax_dec.transAxes, fontsize=8, color=txt,
+                fontfamily="monospace",
                 bbox=dict(boxstyle="round,pad=0.4", fc=panel, ec=grid_c, lw=0.8))
 
     ax_dec.set_ylabel("Longitudinal Accel [G]", fontsize=10, color=txt)
@@ -143,7 +97,7 @@ def make_chart(d):
                  color=txt, fontsize=13, fontweight="bold",
                  fontfamily="monospace", y=0.96)
     fig.text(0.5, 0.925,
-             "Speed and longitudinal deceleration (a = dv/dt)  |  VER vs SAI",
+             f"Speed and longitudinal deceleration (a = dv/dt)  |  {da} vs {db}",
              ha="center", color=muted, fontsize=9, fontfamily="monospace")
 
     return fig
@@ -154,34 +108,37 @@ def main():
     st.caption("2023 Italian GP Qualifying  /  VER vs SAI  /  Real FIA telemetry via FastF1")
 
     with st.spinner("Loading telemetry from FIA servers..."):
-        d = load_telemetry()
+        data = get_data()
+
+    da, db = data["driver_a"], data["driver_b"]
+    bp_a, bp_b = data["brake_point_a"], data["brake_point_b"]
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("VER brake point", f"{d['ver_bp']:.0f} m" if d["ver_bp"] else "n/a")
-    c2.metric("SAI brake point", f"{d['sai_bp']:.0f} m" if d["sai_bp"] else "n/a")
-    c3.metric("VER peak decel", f"{d['ver_peak']:.2f} G")
-    c4.metric("SAI peak decel", f"{d['sai_peak']:.2f} G")
+    c1.metric(f"{da} brake point", f"{bp_a:.0f} m" if bp_a else "n/a")
+    c2.metric(f"{db} brake point", f"{bp_b:.0f} m" if bp_b else "n/a")
+    c3.metric(f"{da} peak decel", f"{data['peak_decel_a']:.2f} G")
+    c4.metric(f"{db} peak decel", f"{data['peak_decel_b']:.2f} G")
 
-    if d["ver_bp"] and d["sai_bp"]:
-        diff = abs(d["sai_bp"] - d["ver_bp"])
-        later = "VER" if d["ver_bp"] > d["sai_bp"] else "SAI"
+    if bp_a and bp_b:
+        diff = abs(bp_b - bp_a)
+        later = da if bp_a > bp_b else db
         st.info(f"**{later}** brakes **{diff:.0f} m later** into Turn 1.")
 
-    fig = make_chart(d)
+    fig = make_chart(data)
     st.pyplot(fig, use_container_width=True)
 
     with st.expander("Raw telemetry (T1 zone)"):
-        t1, t2 = st.tabs(["VER", "SAI"])
-        with t1:
+        tab1, tab2 = st.tabs([da, db])
+        with tab1:
             st.dataframe(
-                d["ver_z"][["Distance", "Speed", "Accel_G"]].rename(
-                    columns={"Accel_G": "Accel [G]"}),
+                data["zone_a"][["Distance", "Speed", "Accel_ms2", "Accel_G"]]
+                .rename(columns={"Accel_ms2": "Accel [m/s2]", "Accel_G": "Accel [G]"}),
                 use_container_width=True,
             )
-        with t2:
+        with tab2:
             st.dataframe(
-                d["sai_z"][["Distance", "Speed", "Accel_G"]].rename(
-                    columns={"Accel_G": "Accel [G]"}),
+                data["zone_b"][["Distance", "Speed", "Accel_ms2", "Accel_G"]]
+                .rename(columns={"Accel_ms2": "Accel [m/s2]", "Accel_G": "Accel [G]"}),
                 use_container_width=True,
             )
 

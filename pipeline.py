@@ -70,17 +70,11 @@ def compute_deceleration(tel: pd.DataFrame) -> pd.DataFrame:
     df["Speed_ms"] = df["Speed"] * (1000.0 / 3600.0)
 
     # numerical derivative: a = dv/dt
-    dt = np.gradient(df["ElapsedSeconds"].values)
-    dv = np.gradient(df["Speed_ms"].values)
-
-    # avoid division by zero on duplicate timestamps
-    dt[dt == 0] = np.nan
-    df["Accel_ms2"] = dv / dt
+    # np.gradient(f, x) computes df/dx directly using central differences
+    t = df["ElapsedSeconds"].values
+    v = df["Speed_ms"].values
+    df["Accel_ms2"] = np.gradient(v, t)
     df["Accel_G"] = df["Accel_ms2"] / 9.81
-
-    # fill any NaN from zero-dt with nearest value
-    df["Accel_ms2"] = df["Accel_ms2"].interpolate(method="nearest").bfill().ffill()
-    df["Accel_G"] = df["Accel_G"].interpolate(method="nearest").bfill().ffill()
 
     return df
 

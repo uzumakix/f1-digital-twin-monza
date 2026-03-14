@@ -8,7 +8,13 @@ Spatial telemetry pipeline calculating kinematic deceleration (dv/dt) into Turn 
 
 ![GUI Screenshot](results/gui_screenshot.png)
 
-Sainz brakes later than Verstappen into Turn 1 and pulls harder peak deceleration. The SF-23's mechanical grip lets him commit to a later brake point and still rotate through the corner. The full speed trace and G-force overlay show exactly where and how each driver slows down from 340 km/h.
+Sainz brakes **9 metres later** than Verstappen into Turn 1 (782m vs 773m from the start line) and hits **-6.03 G** of peak longitudinal deceleration compared to Verstappen's **-5.10 G**. The SF-23's mechanical grip lets Sainz commit to a later, harder brake application and still rotate the car through the corner.
+
+![braking analysis](results/braking_analysis.png)
+
+The full-lap speed trace shows the context. Both cars hit ~340 km/h on the main straight before the T1 braking zone (highlighted region).
+
+![full lap speed](results/full_lap_speed.png)
 
 ## How it works
 
@@ -32,7 +38,6 @@ Three steps.
 ```
 pipeline.py         ingest + deceleration math (a = dv/dt)
 dashboard.py        streamlit dashboard (interactive)
-app.py              alternate streamlit dashboard
 generate_plots.py   static plot generation for README
 assets/
     banner.png      header image (Monza 2023)
