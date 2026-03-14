@@ -112,7 +112,7 @@ def plot_braking_zone(data):
         spine.set_edgecolor(grid_c)
 
     # title
-    fig.suptitle("MONZA 2023 Q  —  TURN 1 BRAKING ZONE",
+    fig.suptitle("MONZA 2023 Q  |  TURN 1 BRAKING ZONE",
                  color=text_c, fontsize=13, fontweight="bold",
                  fontfamily="monospace", y=0.96)
     fig.text(0.5, 0.925,
@@ -123,7 +123,7 @@ def plot_braking_zone(data):
 
 
 def main():
-    st.title("Monza T1 — Braking Deceleration Analysis")
+    st.title("Monza T1 | Braking Deceleration Analysis")
     st.caption("2023 Italian GP Qualifying  ·  VER vs SAI  ·  Real FIA telemetry via FastF1")
 
     with st.spinner("Loading telemetry from FIA servers..."):
@@ -134,8 +134,8 @@ def main():
 
     # key metrics
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric(f"{da} brake point", f"{bp_a:.0f} m" if bp_a else "—")
-    col2.metric(f"{db} brake point", f"{bp_b:.0f} m" if bp_b else "—")
+    col1.metric(f"{da} brake point", f"{bp_a:.0f} m" if bp_a else "n/a")
+    col2.metric(f"{db} brake point", f"{bp_b:.0f} m" if bp_b else "n/a")
     col3.metric(f"{da} peak decel", f"{data['peak_decel_a']:.2f} G")
     col4.metric(f"{db} peak decel", f"{data['peak_decel_b']:.2f} G")
 

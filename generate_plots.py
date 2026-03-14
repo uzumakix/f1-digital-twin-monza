@@ -87,7 +87,7 @@ def save_braking_chart(data, out="results/braking_analysis.png"):
     for s in ax2.spines.values():
         s.set_edgecolor(grid_c)
 
-    fig.suptitle("MONZA 2023 Q  —  TURN 1 BRAKING ZONE",
+    fig.suptitle("MONZA 2023 Q  |  TURN 1 BRAKING ZONE",
                  color=text_c, fontsize=13, fontweight="bold",
                  fontfamily="monospace", y=0.96)
     fig.text(0.5, 0.925,

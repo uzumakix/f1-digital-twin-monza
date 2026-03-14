@@ -129,7 +129,7 @@ def run_pipeline():
 if __name__ == "__main__":
     data = run_pipeline()
     da, db = data["driver_a"], data["driver_b"]
-    print(f"\n=== Monza 2023 Q — T1 Braking Analysis ===")
+    print(f"\n=== Monza 2023 Q | T1 Braking Analysis ===")
     print(f"{da} brake point: {data['brake_point_a']:.0f} m")
     print(f"{db} brake point: {data['brake_point_b']:.0f} m")
     print(f"{da} peak decel:  {data['peak_decel_a']:.2f} G")
